@@ -3,10 +3,10 @@
 # v.1.0 20230920 by ManhNT
 
 ### configuration
-Totalbps=16000000
+totalbps=16000000
 
-pausePercent=95
-resumePercent=90
+pausePercent=0.95 * $totalbps
+resumePercent=0.9 * $totalbps
 
 lbadmin=/castis/bin/tools/LBAdmin_64
 hlsConfigPath=/castis/bin/CiLLBServer/CiLLBServer.cfg
@@ -42,7 +42,7 @@ do
 	else
 		curbps=`expr $curbps \* 1000000`
 	fi
-	usgae=`echo "${curbps}*100/${Totalbps}" | bc`
+	usgae=`echo "${curbps}/${totalbps}" | bc`
     totalHLSUsage=$((totalHLSUsage + usgae))
     echo "`date +%F' '+%T`,INFO,vodNum[${vodNum}]vodIP[${vodIP}]curbps[${curbps}]usgae[${usgae}%]status[${status}]" >> ${logPath}/monitor.txt
 done < .hlstmp
@@ -54,17 +54,17 @@ curl "${slb}/api/nodes" | python -m json.tool > .dashtmp
 for server in `cat $dashConfigPath| grep hash-key: | awk '{print $3}'`
 do
    vodIP=`cat $dashConfigPath | grep cache-server5 -A 10 | grep websocket-url | cut -d'/' -f3 | cut -d':' -f1`
-   curbps=`cat .dashtmp | grep server -A 5 | grep \"bps\" | awk '{print $2}'| cut -d',' -f1`
-   status=`cat .dashtmp | grep server -A 5 | grep paused | awk '{print $2}' | cut -d',' -f1`
+   curbps=`cat .dashtmp | grep $server -A 5 | grep \"bps\" | awk '{print $2}'| cut -d',' -f1`
+   status=`cat .dashtmp | grep $server -A 5 | grep paused | awk '{print $2}' | cut -d',' -f1`
    if [ "$status" == "false" ]
    then
       status="Running"
    else
       status="Paused"
    fi
-   usgae=`echo "${curbps}*100/${Totalbps}" | bc`
+   usgae=`echo "${curbps}/${totalbps}" | bc`
    totalDASHUsage=$((totalDASHUsage + usgae))
-   echo "`date +%F' '+%T`,INFO,vodNum[${vodNum}]vodIP[${vodIP}]curbps[${curbps}]usgae[${usgae}%]status[${status}]" >> ${logPath}
+   echo "`date +%F' '+%T`,INFO,vodIP[${vodIP}]curbps[${curbps}]usgae[${usgae}%]status[${status}]" >> ${logPath}/monitor.txt
 done
 
 # Calculate the total usage percentage for HLS and DASH
@@ -76,28 +76,28 @@ then
     # Perform actions to pause both HLS and DASH
 
     #pause both services
-    echo "`date +%F' '+%T`,INFO,Total bandwidth usage exceeds 95%. Pausing HLS and DASH." >> ${logPath}
+    echo "`date +%F' '+%T`,INFO,Total bandwidth usage exceeds 95%. Pausing HLS and DASH." >> ${logPath}/monitor.txt
 
     #Pause HLS
     $lbadmin 127.0.0.1 888 VOD${vodNum} pause
-	echo "`date +%F' '+%T`,WARN,$lbadmin 127.0.0.1 888 VOD${vodNum} pause" >> ${logPath}
+	echo "`date +%F' '+%T`,WARN,$lbadmin 127.0.0.1 888 VOD${vodNum} pause" >> ${logPath}/monitor.txt
 
     #Pause DASH
     curl --header "Content-Type: application/json" --request PUT --data '{"pause":true}' http://${slb}/api/nodes/${server}
-	echo "`date +%F' '+%T`,WARN,curl --header "Content-Type: application/json" --request PUT --data '{"pause":true}' http://${slb}/api/nodes/${server}" >> ${logPath}
+	echo "`date +%F' '+%T`,WARN,curl --header "Content-Type: application/json" --request PUT --data '{"pause":true}' http://${slb}/api/nodes/${server}" >> ${logPath}/monitor.txt
 fi
 # Check if the total usage < 90%
 if [ "$status" == "Paused" ] && [ $totalUsage -le $resumePercent ]
 then 
     # Perform actions to running both HLS and DASH again
 
-    echo "`date +%F' '+%T`,INFO,Total bandwidth usage less than 90%. Running HLS and DASH." >> ${logPath}
+    echo "`date +%F' '+%T`,INFO,Total bandwidth usage less than 90%. Running HLS and DASH." >> ${logPath}/monitor.txt
 
     #Running HLS
     $lbadmin 127.0.0.1 888 VOD${vodNum} run
-	echo "`date +%F' '+%T`,WARN,$lbadmin 127.0.0.1 888 VOD${vodNum} run" >> ${logPath}
+	echo "`date +%F' '+%T`,WARN,$lbadmin 127.0.0.1 888 VOD${vodNum} run" >> ${logPath}/monitor.txt
 
     #Running DASH
     curl --header "Content-Type: application/json" --request PUT --data '{"pause":false}' http://${slb}/api/nodes/${server}
-	echo "`date +%F' '+%T`,WARN,curl --header "Content-Type: application/json" --request PUT --data '{"pause":false}' http://${slb}/api/nodes/${server}" >> ${logPath}
+	echo "`date +%F' '+%T`,WARN,curl --header "Content-Type: application/json" --request PUT --data '{"pause":false}' http://${slb}/api/nodes/${server}" >> ${logPath}/monitor.txt
 fi
