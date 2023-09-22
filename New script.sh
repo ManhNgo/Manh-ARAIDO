@@ -5,8 +5,8 @@
 ### configuration
 totalbps=16000000
 
-pausePercent=0.95 * $totalbps
-resumePercent=0.9 * $totalbps
+pausePercent=$(echo "95 * $totalbps / 100" | bc)
+resumePercent=$(echo "90 * $totalbps /100" | bc)
 
 lbadmin=/castis/bin/tools/LBAdmin_64
 hlsConfigPath=/castis/bin/CiLLBServer/CiLLBServer.cfg
@@ -42,7 +42,7 @@ do
 	else
 		curbps=`expr $curbps \* 1000000`
 	fi
-	usgae=`echo "${curbps}/${totalbps}" | bc`
+	usgae=$(echo "scale=2; ($curbps / $totalbps) * 100" | bc)
     totalHLSUsage=$((totalHLSUsage + usgae))
     echo "`date +%F' '+%T`,INFO,vodNum[${vodNum}]vodIP[${vodIP}]curbps[${curbps}]usgae[${usgae}%]status[${status}]" >> ${logPath}/monitor.txt
 done < .hlstmp
@@ -62,7 +62,7 @@ do
    else
       status="Paused"
    fi
-   usgae=`echo "${curbps}/${totalbps}" | bc`
+   usgae=$(echo "scale=2; ($curbps / $totalbps) * 100" | bc)
    totalDASHUsage=$((totalDASHUsage + usgae))
    echo "`date +%F' '+%T`,INFO,vodIP[${vodIP}]curbps[${curbps}]usgae[${usgae}%]status[${status}]" >> ${logPath}/monitor.txt
 done
