@@ -53,7 +53,7 @@ curl "${slb}/api/nodes" | python -m json.tool > .dashtmp
 
 for server in `cat $dashConfigPath| grep hash-key: | awk '{print $3}'`
 do
-   vodIP=`cat $dashConfigPath | grep cache-server5 -A 10 | grep websocket-url | cut -d'/' -f3 | cut -d':' -f1`
+   vodIP=`cat $dashConfigPath | grep $server -A 10 | grep websocket-url | cut -d'/' -f3 | cut -d':' -f1`
    curbps=`cat .dashtmp | grep $server -A 5 | grep \"bps\" | awk '{print $2}'| cut -d',' -f1`
    status=`cat .dashtmp | grep $server -A 5 | grep paused | awk '{print $2}' | cut -d',' -f1`
    if [ "$status" == "false" ]
